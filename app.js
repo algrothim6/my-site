@@ -43,6 +43,7 @@ const ICONS = {
   palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/>',
   building: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h2"/><path d="M14 6h2"/><path d="M9 10h2"/><path d="M14 10h2"/><path d="M10 22v-5h4v5"/>',
   menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   google: '<path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.9 5.9 0 0 1-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 14a6 6 0 0 1 0-3.8V7.6H3.1a10 10 0 0 0 0 8.9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.6L6.4 10A5.9 5.9 0 0 1 12 6z"/>',
 };
 const icon = (name, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -143,7 +144,6 @@ const SERVICES = [
   ['gavel','المحكمة','الأحكام والمخالفات','#/court'],
   ['store','المكاتب والأسواق','تجارة المواطنين والضرائب','#/market'],
   ['game','جروبيا بارك','ألعاب المواطنين','#/park'],
-  ['scale','دستور الدولة','وثيقة رمزية للتسلية','#/constitution'],
 ];
 const DEFAULT_LAWS = [
   { id:'l1', title:'الحد من عمليات غسيل الاموال', desc:'تنظيم عمليات التحويل وفرض رقابة على التدفقات المالية المشبوهة.', yes:0, no:0, status:'open' },
@@ -291,27 +291,41 @@ function renderHome() {
   </div>
 
   <div class="face">
-    <h2 class="section-title">رمز الدولة</h2><p class="section-sub">الهوية البصرية للدولة الجروبية</p>
+    <h2 class="section-title">رمز الدولة</h2>
     <div class="grid grid-2">
-      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">علم الدولة</div><div class="row-sub muted small">${S.flag ? 'الرمز المعتمد للدولة' : 'خانة فارغة — لم يُرفع العلم بعد'}</div></div><div style="width:52px;height:36px;border:1px solid var(--line-strong);border-radius:6px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,rgba(var(--primary),.12),transparent)">${S.flag ? esc(S.flag) : ''}</div></div></div>
-      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">النشيد الوطني</div><div class="row-sub muted small" style="white-space:pre-line">${S.anthem ? esc(S.anthem) : 'خانة فارغة — لم تُعتمد النشيد بعد'}</div></div>${icon('music')}</div></div>
+      <div class="card symbol-card">
+        ${isOwner() ? `<button class="symbol-edit" data-action="owner" data-kind="symbols">${icon('edit')} العلم</button>` : ''}
+        <div class="row-title">علم الدولة</div>
+        <div class="symbol-placeholder">
+          ${S.flag ? `<span class="sym-emoji">${esc(S.flag)}</span>` : `<span class="sym-ico">${icon('flag')}</span><span>خانة فارغة — لم يُرفع العلم بعد</span>`}
+        </div>
+      </div>
+      <div class="card symbol-card">
+        ${isOwner() ? `<button class="symbol-edit" data-action="owner" data-kind="symbols">${icon('edit')} النشيد</button>` : ''}
+        <div class="row-title">النشيد الوطني</div>
+        <div class="symbol-placeholder">
+          ${S.anthem ? `<span class="sym-text">${esc(S.anthem)}</span>` : `<span class="sym-ico">${icon('music')}</span><span>خانة فارغة — لم تُعتمد النشيد بعد</span>`}
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="face">
     <h2 class="section-title">خدمات المواطن</h2><p class="section-sub">كل شيء في مكان واحد</p>
-    <div class="grid grid-4">
-      ${SERVICES.map(([i, t, d, h]) => `<a class="service-card" href="${h}"><div class="service-ico">${icon(i)}</div><div class="service-name">${t}</div><div class="service-desc">${d}</div></a>`).join('')}
+    <div class="grid grid-3">
+      ${SERVICES.map(([i, t, d, h]) => `<a class="service-card svc-link" href="${h}"><span class="svc-arrow">${icon('arrow')}</span><div class="service-ico">${icon(i)}</div><div class="service-name">${t}</div><div class="service-desc">${d}</div></a>`).join('')}
     </div>
   </div>
 
-  <div class="face card constitution">
-    <h2 class="section-title">دستور الدولة</h2>
-    <p class="gold" style="font-family:var(--font-display);font-size:15px">بسم الله الرحمن الرحيم</p>
-    <h4>دستور الدولة الجروبية</h4>
-    ${CONSTITUTION.slice(0, 3).map(([t, b]) => `<h4>${t}</h4><p>${b}</p>`).join('')}
-    <button class="btn btn-gold btn-sm" style="margin-top:18px" data-action="constitution">اقرأ الدستور كاملاً (9 مادة)</button>
-    <p class="muted small" style="margin-top:14px">وثيقة رمزية لدولة افتراضية أُنشئت للتسلية — لا تترتب عليها أي آثار قانونية.</p>
+  <div class="face card constitution constitution-full">
+    <div class="constitution-mark">${emblem()}</div>
+    <div class="constitution-inner">
+      <p class="gold" style="font-family:var(--font-display);font-size:15px">بسم الله الرحمن الرحيم</p>
+      <h2 class="section-title">دستور الدولة الجروبية</h2>
+      ${CONSTITUTION.map(([t, b]) => `<h4>${t}</h4><p>${b}</p>`).join('')}
+      <button class="btn btn-sm" style="margin-top:18px" data-action="constitution">عرض الدستور</button>
+      <p class="muted small" style="margin-top:14px">وثيقة رمزية لدولة افتراضية أُنشئت للتسلية — لا تترتب عليها أي آثار قانونية.</p>
+    </div>
   </div>
 
   <div class="face grid grid-2">
