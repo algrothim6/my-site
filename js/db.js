@@ -295,5 +295,28 @@ window.DB = (function () {
     }
   }
 
-  return { enabled, init, reload, pushAll, register, login, logout, googleUrl, handleOAuthCallback };
+  async function uploadAsset(file, kind) {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const path = `${kind}-${Date.now()}.${ext}`;
+    if (!enabled) {
+      return await new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.readAsDataURL(file);
+      });
+    }
+    const res = await fetch(`${URL_RAW}/storage/v1/object/state-assets/${path}`, {
+      method: 'POST',
+      headers: {
+        apikey: KEY, Authorization: 'Bearer ' + KEY,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: file,
+    });
+    if (!res.ok) throw new Error('upload ' + res.status + ' ' + (await res.text()).slice(0, 150));
+    return `${URL_RAW}/storage/v1/object/public/state-assets/${path}`;
+  }
+
+  return { enabled, init, reload, pushAll, register, login, logout, googleUrl, handleOAuthCallback, uploadAsset };
 })();

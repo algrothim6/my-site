@@ -175,4 +175,21 @@ $$;
 
 grant execute on function public.app_state() to anon, authenticated;
 
+-- ============================================================
+-- Public storage bucket for the state flag and national anthem
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('state-assets', 'state-assets', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "state assets public read" on storage.objects;
+create policy "state assets public read" on storage.objects
+  for select to anon, authenticated using (bucket_id = 'state-assets');
+
+drop policy if exists "state assets public write" on storage.objects;
+create policy "state assets public write" on storage.objects
+  for all to anon, authenticated
+  using (bucket_id = 'state-assets')
+  with check (bucket_id = 'state-assets');
+
 -- Done. Now paste Project URL + anon key into supabase/config.js

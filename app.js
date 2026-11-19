@@ -48,40 +48,8 @@ const ICONS = {
 };
 const icon = (name, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
-/* Golden eagle emblem — drawn fresh as SVG, styled after the original's crest.
-   Uses the theme's primary colour so it works in all three palettes. */
-const emblem = () => `<svg class="emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-  <defs>
-    <linearGradient id="jrbGold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="rgb(var(--primary))" stop-opacity="1"/>
-      <stop offset="55%" stop-color="rgb(var(--primary))" stop-opacity=".78"/>
-      <stop offset="100%" stop-color="rgb(var(--primary))" stop-opacity=".5"/>
-    </linearGradient>
-  </defs>
-  <circle cx="32" cy="32" r="30" stroke="url(#jrbGold)" stroke-width="1.6"/>
-  <circle cx="32" cy="32" r="26.5" stroke="url(#jrbGold)" stroke-width=".7" stroke-opacity=".6"/>
-  <g fill="url(#jrbGold)">
-    <!-- wings -->
-    <path d="M30 31c-4-6-10-10-18-11 4 3 6 6 7 9-5-2-9-2-13 0 6 2 10 5 13 9 4-4 8-6 11-7z"/>
-    <path d="M34 31c4-6 10-10 18-11-4 3-6 6-7 9 5-2 9-2 13 0-6 2-10 5-13 9-4-4-8-6-11-7z"/>
-    <!-- feather tips -->
-    <path d="M12 20c4 1 7 3 9 6l-3 1c-2-3-4-5-6-7z" opacity=".9"/>
-    <path d="M52 20c-4 1-7 3-9 6l3 1c2-3 4-5 6-7z" opacity=".9"/>
-    <!-- body -->
-    <path d="M32 25c-3 0-5 3-5 8 0 6 2 11 5 15 3-4 5-9 5-15 0-5-2-8-5-8z"/>
-    <!-- head -->
-    <path d="M32 17c-3 0-5 2-5 5 0 3 2 5 5 5s5-2 5-5c0-3-2-5-5-5z"/>
-    <!-- beak -->
-    <path d="M27 21l-5 2 5 2z"/>
-    <!-- tail -->
-    <path d="M29 46l3 7 3-7z"/>
-    <path d="M26 44l2 7 2-6z" opacity=".75"/>
-    <path d="M38 44l-2 7-2-6z" opacity=".75"/>
-  </g>
-  <circle cx="30.5" cy="21.5" r=".9" fill="var(--bg)"/>
-  <path d="M18 51h28M23 55h18" stroke="url(#jrbGold)" stroke-width="1.8" stroke-linecap="round"/>
-</svg>`;
-
+/* Golden eagle emblem — user-supplied crest saved as assets/emblem.svg */
+const emblem = () => `<img class="emblem" src="assets/emblem.svg" alt="" aria-hidden="true">`;
 /* ---------- dates ---------- */
 const AR_DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -297,14 +265,18 @@ function renderHome() {
         ${isOwner() ? `<button class="symbol-edit" data-action="owner" data-kind="symbols">${icon('edit')} العلم</button>` : ''}
         <div class="row-title">علم الدولة</div>
         <div class="symbol-placeholder">
-          ${S.flag ? `<span class="sym-emoji">${esc(S.flag)}</span>` : `<span class="sym-ico">${icon('flag')}</span><span>خانة فارغة — لم يُرفع العلم بعد</span>`}
+          ${!S.flag ? `<span class="sym-ico">${icon('flag')}</span><span>خانة فارغة — لم يُرفع العلم بعد</span>`
+          : /^https?:|^data:/.test(S.flag) ? `<img class="sym-image" src="${esc(S.flag)}" alt="علم الدولة">`
+          : `<span class="sym-emoji">${esc(S.flag)}</span>`}
         </div>
       </div>
       <div class="card symbol-card">
         ${isOwner() ? `<button class="symbol-edit" data-action="owner" data-kind="symbols">${icon('edit')} النشيد</button>` : ''}
         <div class="row-title">النشيد الوطني</div>
         <div class="symbol-placeholder">
-          ${S.anthem ? `<span class="sym-text">${esc(S.anthem)}</span>` : `<span class="sym-ico">${icon('music')}</span><span>خانة فارغة — لم تُعتمد النشيد بعد</span>`}
+          ${!S.anthem ? `<span class="sym-ico">${icon('music')}</span><span>خانة فارغة — لم تُعتمد النشيد بعد</span>`
+          : /^https?:|^data:/.test(S.anthem) ? `<audio controls class="sym-audio" src="${esc(S.anthem)}"></audio><span class="sym-text">النشيد الوطني للدولة الجروبية</span>`
+          : `<span class="sym-text">${esc(S.anthem)}</span>`}
         </div>
       </div>
     </div>
@@ -751,7 +723,13 @@ function modalBody(type, d) {
       case 'owner-candidate': return `<form data-form="owner-candidate"><div class="field"><label>اسم المرشح</label><input name="name" required></div><div class="field"><label>الشعار</label><input name="slogan" required></div><button class="btn btn-gold btn-block" type="submit">إضافة المرشح</button></form>`;
       case 'owner-fine': return `<form data-form="owner-fine"><div class="field"><label>المواطن</label><select name="who" required>${people()}</select></div><div class="field"><label>سبب المخالفة</label><input name="title" required></div><div class="field"><label>القيمة (دولار جروبي)</label><input name="amount" type="number" min="1" required></div><button class="btn btn-gold btn-block" type="submit">إصدار المخالفة</button></form>`;
       case 'owner-case': return `<form data-form="owner-case"><div class="field"><label>المدعى عليه</label><select name="defendant" required>${people()}</select></div><div class="field"><label>عنوان القضية</label><input name="title" required></div><div class="field"><label>الحالة</label><select name="status"><option>قيد النظر</option><option>محكوم</option><option>مغلقة</option></select></div><button class="btn btn-gold btn-block" type="submit">تسجيل القضية</button></form>`;
-      case 'owner-symbols': return `<form data-form="owner-symbols"><div class="field"><label>رمز العلم (إيموجي)</label><input name="flag" placeholder="🦅" maxlength="4" value="${esc(S.flag||'')}"></div><div class="field"><label>النشيد الوطني</label><textarea name="anthem" rows="3" placeholder="نشيد الدولة الجروبية...">${esc(S.anthem||'')}</textarea></div><button class="btn btn-gold btn-block" type="submit">اعتماد الرموز</button></form>`;
+      case 'owner-symbols': return `<form data-form="owner-symbols">
+        <div class="field"><label>رفع صورة العلم</label><input type="file" name="flagFile" accept="image/*"></div>
+        <div class="field"><label>أو رمز العلم (إيموجي)</label><input name="flag" placeholder="🦅" maxlength="4" value="${/^https?:|^data:/.test(S.flag||'') ? '' : esc(S.flag||'')}"></div>
+        <div class="divider"></div>
+        <div class="field"><label>رفع ملف النشيد (صوت)</label><input type="file" name="anthemFile" accept="audio/*"></div>
+        <div class="field"><label>أو نص النشيد</label><textarea name="anthem" rows="3" placeholder="نشيد الدولة الجروبية...">${/^https?:|^data:/.test(S.anthem||'') ? '' : esc(S.anthem||'')}</textarea></div>
+        <button class="btn btn-gold btn-block" type="submit">اعتماد الرموز</button></form>`;
       case 'owner-judge': return `<form data-form="owner-judge"><div class="field"><label>اسم قاضي المحكمة</label><input name="name" required value="${esc(S.judge)}"></div><button class="btn btn-gold btn-block" type="submit">تعيين</button></form>`;
     }
   }
@@ -971,8 +949,22 @@ function handleSubmit(form) {
     save(); closeModal(); render(); toast('تم تسجيل القضية'); return;
   }
   if (f === 'owner-symbols') {
-    S.flag = data.flag.trim() || null; S.anthem = data.anthem.trim() || null;
-    save(); closeModal(); render(); toast('تم اعتماد رموز الدولة'); return;
+    (async () => {
+      let flag = data.flag.trim() || S.flag || null;
+      let anthem = data.anthem.trim() || S.anthem || null;
+      try {
+        const ff = form.elements.flagFile.files[0];
+        const af = form.elements.anthemFile.files[0];
+        if (ff) flag = await DB.uploadAsset(ff, 'flag');
+        if (af) anthem = await DB.uploadAsset(af, 'anthem');
+      } catch (err) {
+        toast('فشل رفع الملف — تأكد من تشغيل SQL الخاص بـ Storage');
+        return;
+      }
+      S.flag = flag; S.anthem = anthem;
+      save(); closeModal(); render(); toast('تم اعتماد رموز الدولة');
+    })();
+    return;
   }
   if (f === 'owner-judge') {
     S.judge = data.name.trim(); save(); closeModal(); render(); toast('تم تعيين قاضي المحكمة'); return;
