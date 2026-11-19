@@ -630,6 +630,7 @@ function renderConstitution() {
 }
 
 /* ---------- router ---------- */
+let _lastRoute = null;
 function render() {
   const r = currentRoute();
   const pages = {
@@ -640,7 +641,13 @@ function render() {
   renderShell();
   $('#main').innerHTML = (pages[r] || renderHome)();
   closeModal();
-  window.scrollTo({ top: 0 });
+  // Only reset scroll on a real route change. Doing it after every render
+  // (including the 15s refresh) queries layout right after innerHTML changes
+  // and causes a forced reflow.
+  if (_lastRoute !== r) {
+    _lastRoute = r;
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
 }
 
 /* ---------- toast + modal ---------- */
@@ -1017,7 +1024,8 @@ function boot() {
       const ok = await DB.init(S);
       if (ok) {
         try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {}
-        DB.pushAll(S); // keep seeded defaults and the signed-in user in sync
+        // No pushAll here: every mutation already writes through save().
+        // Pushing all tables on every page load wasted ~13 requests.
         render();
       }
     })().catch(() => {});
@@ -1029,7 +1037,12 @@ boot();
 async function refreshFromDB() {
   if (!window.DB || !DB.enabled) return;
   if ($('#modalRoot').innerHTML) return;
-  try { await DB.reload(S); render(); } catch (e) { /* offline / temporary error */ }
+  const before = JSON.stringify([S.bank, S.candidates, S.laws, S.articles, S.projects, S.rooms, S.businesses, S.users, S.user]);
+  try {
+    await DB.reload(S);
+    const after = JSON.stringify([S.bank, S.candidates, S.laws, S.articles, S.projects, S.rooms, S.businesses, S.users, S.user]);
+    if (before !== after) render(); // avoid pointless DOM rebuilds (and reflows)
+  } catch (e) { /* offline / temporary error */ }
 }
 setInterval(refreshFromDB, 15000);
 document.addEventListener('visibilitychange', () => {

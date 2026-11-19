@@ -98,21 +98,25 @@ window.DB = (function () {
   async function init(S) {
     if (!enabled) return false;
     try {
-      // Seed global tables once, using the defaults already in the app state.
-      const seeds = [
-        ['candidates', S.candidates.map(candRow)],
-        ['laws', S.laws.map(lawRow)],
-        ['articles', S.articles.map(artRow)],
-        ['projects', S.projects.map(projRow)],
-      ];
-      for (const [table, rows] of seeds) {
-        if (!rows.length) continue;
-        const existing = await select(table, 'select=id');
-        if (!existing.length) await upsert(table, rows);
+      // Seed once per browser, in ONE parallel batch instead of 6 chained requests.
+      if (!localStorage.getItem('jrb_seeded')) {
+        const seeds = [
+          ['candidates', S.candidates.map(candRow)],
+          ['laws', S.laws.map(lawRow)],
+          ['articles', S.articles.map(artRow)],
+          ['projects', S.projects.map(projRow)],
+        ];
+        const checks = await Promise.all([
+          ...seeds.map(([t]) => select(t, 'select=id')),
+          select('bank', 'select=id'), select('settings', 'select=id'),
+        ]);
+        const jobs = [];
+        seeds.forEach(([table, rows], i) => { if (!checks[i].length && rows.length) jobs.push(upsert(table, rows)); });
+        if (!checks[seeds.length].length) jobs.push(upsert('bank', [bankRow(S.bank)]));
+        if (!checks[seeds.length + 1].length) jobs.push(upsert('settings', [settingsRow(S)]));
+        await Promise.all(jobs);
+        localStorage.setItem('jrb_seeded', '1');
       }
-      if (!(await select('bank', 'select=id')).length) await upsert('bank', [bankRow(S.bank)]);
-      if (!(await select('settings', 'select=id')).length) await upsert('settings', [settingsRow(S)]);
-
       const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
         const rows = await select('users', `token=eq.${encodeURIComponent(token)}&select=*`);
@@ -126,32 +130,50 @@ window.DB = (function () {
     }
   }
 
-  async function reload(S) {
-    if (!enabled) return;
+  // One RPC call returns the whole public state. Falls back to parallel
+  // per-table reads if the RPC has not been installed yet.
+  async function loadBundle() {
+    try {
+      const res = await fetch(`${URL_RAW}/rest/v1/rpc/app_state`, {
+        method: 'POST', headers: headers(), body: '{}',
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { /* fall through */ }
     const [bank, settings, candidates, laws, violations, cases, businesses, sales, rooms, articles, projects, users] = await Promise.all([
       select('bank'), select('settings'), select('candidates'), select('laws'),
       select('violations'), select('cases'), select('businesses'), select('sales'),
       select('rooms'), select('articles'), select('projects'), select('users'),
     ]);
-    const b = bankFrom(bank[0]); if (b) S.bank = b;
-    if (settings[0]) {
-      S.parliamentSpeaker = settings[0].speaker || null;
-      S.judge = settings[0].judge || S.judge;
-      S.flag = settings[0].flag || null;
-      S.anthem = settings[0].anthem || null;
+    return { bank, settings, candidates, laws, violations, cases, businesses, sales, rooms, articles, projects, users };
+  }
+
+  function applyState(S, d) {
+    const b = bankFrom((d.bank || [])[0]); if (b) S.bank = b;
+    const st = (d.settings || [])[0];
+    if (st) {
+      S.parliamentSpeaker = st.speaker || null;
+      S.judge = st.judge || S.judge;
+      S.flag = st.flag || null;
+      S.anthem = st.anthem || null;
     }
-    if (candidates.length) S.candidates = candidates.map(c => ({ id: c.id, name: c.name, slogan: c.slogan, votes: num(c.votes) }));
-    if (laws.length) S.laws = laws.map(lawFrom);
-    S.articles = articles.map(a => ({ id: a.id, title: a.title, source: a.source, body: a.body, date: a.date }));
-    S.projects = projects.map(p => ({ id: p.id, name: p.name, value: num(p.value), status: p.status }));
-    S.violations = violations.map(vioFrom);
-    S.cases = cases.map(c => ({ id: c.id, title: c.title, defendant: c.defendant, status: c.status, date: c.date }));
-    S.businesses = businesses.map(bizFrom);
-    S.sales = sales.map(saleFrom);
-    S.rooms = rooms.map(roomFrom);
-    S.users = users.map(u => ({ id: u.id, name: u.name, email: u.email, balance: num(u.balance), role: u.role || 'citizen' }));
+    if ((d.candidates || []).length) S.candidates = d.candidates.map(c => ({ id: c.id, name: c.name, slogan: c.slogan, votes: num(c.votes) }));
+    if ((d.laws || []).length) S.laws = d.laws.map(lawFrom);
+    S.articles = (d.articles || []).map(a => ({ id: a.id, title: a.title, source: a.source, body: a.body, date: a.date }));
+    S.projects = (d.projects || []).map(p => ({ id: p.id, name: p.name, value: num(p.value), status: p.status }));
+    S.violations = (d.violations || []).map(vioFrom);
+    S.cases = (d.cases || []).map(c => ({ id: c.id, title: c.title, defendant: c.defendant, status: c.status, date: c.date }));
+    S.businesses = (d.businesses || []).map(bizFrom);
+    S.sales = (d.sales || []).map(saleFrom);
+    S.rooms = (d.rooms || []).map(roomFrom);
+    S.users = (d.users || []).map(u => ({ id: u.id, name: u.name, email: u.email, balance: num(u.balance), role: u.role || 'citizen' }));
+  }
+
+  async function reload(S) {
+    if (!enabled) return;
+    const d = await loadBundle();
+    applyState(S, d);
     if (S.user) {
-      const fresh = users.find(u => u.id === S.user.id);
+      const fresh = (d.users || []).find(u => u.id === S.user.id);
       if (fresh) S.user = mapUser(fresh);
       S.votedFor = S.user.votedFor || null;
       S.lawVotes = S.user.lawVotes || {};

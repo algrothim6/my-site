@@ -142,4 +142,37 @@ begin
   end loop;
 end $$;
 
+-- ============================================================
+-- Single round-trip state read (performance): 12 table reads -> 1 RPC call.
+-- Password hashes and session tokens are deliberately NOT returned.
+-- ============================================================
+create or replace function public.app_state()
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'bank',       coalesce((select jsonb_agg(row_to_json(t)) from public.bank t), '[]'::jsonb),
+    'settings',   coalesce((select jsonb_agg(row_to_json(t)) from public.settings t), '[]'::jsonb),
+    'candidates', coalesce((select jsonb_agg(row_to_json(t)) from public.candidates t), '[]'::jsonb),
+    'laws',       coalesce((select jsonb_agg(row_to_json(t)) from public.laws t), '[]'::jsonb),
+    'violations', coalesce((select jsonb_agg(row_to_json(t)) from public.violations t), '[]'::jsonb),
+    'cases',      coalesce((select jsonb_agg(row_to_json(t)) from public.cases t), '[]'::jsonb),
+    'businesses', coalesce((select jsonb_agg(row_to_json(t)) from public.businesses t), '[]'::jsonb),
+    'sales',      coalesce((select jsonb_agg(row_to_json(t)) from public.sales t), '[]'::jsonb),
+    'rooms',      coalesce((select jsonb_agg(row_to_json(t)) from public.rooms t), '[]'::jsonb),
+    'articles',   coalesce((select jsonb_agg(row_to_json(t)) from public.articles t), '[]'::jsonb),
+    'projects',   coalesce((select jsonb_agg(row_to_json(t)) from public.projects t), '[]'::jsonb),
+    'users', coalesce((select jsonb_agg(jsonb_build_object(
+      'id', u.id, 'name', u.name, 'email', u.email, 'national_id', u.national_id,
+      'balance', u.balance, 'role', u.role, 'created_at', u.created_at,
+      'salary_claimed_at', u.salary_claimed_at, 'voted_for', u.voted_for,
+      'law_votes', u.law_votes
+    )) from public.users u), '[]'::jsonb)
+  );
+$$;
+
+grant execute on function public.app_state() to anon, authenticated;
+
 -- Done. Now paste Project URL + anon key into supabase/config.js
