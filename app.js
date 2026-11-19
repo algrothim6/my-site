@@ -47,13 +47,38 @@ const ICONS = {
 };
 const icon = (name, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
-/* An original-style emblem drawn inline (not copied from the source app) */
+/* Golden eagle emblem — drawn fresh as SVG, styled after the original's crest.
+   Uses the theme's primary colour so it works in all three palettes. */
 const emblem = () => `<svg class="emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-  <circle cx="32" cy="32" r="30" stroke="rgb(var(--primary))" stroke-opacity=".45" stroke-width="1.5"/>
-  <circle cx="32" cy="32" r="25" stroke="rgb(var(--primary))" stroke-opacity=".25" stroke-width="1"/>
-  <path d="M32 12c-3 5-8 7-13 8 3 2 5 5 6 9-5-1-9 0-12 3 5 1 9 4 11 9 3-3 5-4 8-5 3 1 5 2 8 5 2-5 6-8 11-9-3-3-7-4-12-3 1-4 3-7 6-9-5-1-10-3-13-8z" fill="rgb(var(--primary))" fill-opacity=".85"/>
-  <circle cx="32" cy="30" r="4" fill="var(--bg)"/>
-  <path d="M20 48h24M24 52h16" stroke="rgb(var(--primary))" stroke-width="2" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="jrbGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgb(var(--primary))" stop-opacity="1"/>
+      <stop offset="55%" stop-color="rgb(var(--primary))" stop-opacity=".78"/>
+      <stop offset="100%" stop-color="rgb(var(--primary))" stop-opacity=".5"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" stroke="url(#jrbGold)" stroke-width="1.6"/>
+  <circle cx="32" cy="32" r="26.5" stroke="url(#jrbGold)" stroke-width=".7" stroke-opacity=".6"/>
+  <g fill="url(#jrbGold)">
+    <!-- wings -->
+    <path d="M30 31c-4-6-10-10-18-11 4 3 6 6 7 9-5-2-9-2-13 0 6 2 10 5 13 9 4-4 8-6 11-7z"/>
+    <path d="M34 31c4-6 10-10 18-11-4 3-6 6-7 9 5-2 9-2 13 0-6 2-10 5-13 9-4-4-8-6-11-7z"/>
+    <!-- feather tips -->
+    <path d="M12 20c4 1 7 3 9 6l-3 1c-2-3-4-5-6-7z" opacity=".9"/>
+    <path d="M52 20c-4 1-7 3-9 6l3 1c2-3 4-5 6-7z" opacity=".9"/>
+    <!-- body -->
+    <path d="M32 25c-3 0-5 3-5 8 0 6 2 11 5 15 3-4 5-9 5-15 0-5-2-8-5-8z"/>
+    <!-- head -->
+    <path d="M32 17c-3 0-5 2-5 5 0 3 2 5 5 5s5-2 5-5c0-3-2-5-5-5z"/>
+    <!-- beak -->
+    <path d="M27 21l-5 2 5 2z"/>
+    <!-- tail -->
+    <path d="M29 46l3 7 3-7z"/>
+    <path d="M26 44l2 7 2-6z" opacity=".75"/>
+    <path d="M38 44l-2 7-2-6z" opacity=".75"/>
+  </g>
+  <circle cx="30.5" cy="21.5" r=".9" fill="var(--bg)"/>
+  <path d="M18 51h28M23 55h18" stroke="url(#jrbGold)" stroke-width="1.8" stroke-linecap="round"/>
 </svg>`;
 
 /* ---------- dates ---------- */
