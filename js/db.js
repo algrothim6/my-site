@@ -220,5 +220,58 @@ window.DB = (function () {
     Object.keys(secrets).forEach(k => delete secrets[k]);
   }
 
-  return { enabled, init, reload, pushAll, register, login, logout };
+  /* ---------- Google OAuth (Supabase Auth) ---------- */
+  function googleUrl() {
+    const back = location.origin + location.pathname;
+    return `${URL_RAW}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
+  }
+
+  async function handleOAuthCallback(S) {
+    const raw = location.hash || '';
+    if (!raw.includes('access_token=')) return null;
+    try {
+      const params = new URLSearchParams(raw.replace(/^#/, ''));
+      const access = params.get('access_token');
+      if (!access) return null;
+      const res = await fetch(`${URL_RAW}/auth/v1/user`, {
+        headers: { apikey: KEY, Authorization: 'Bearer ' + access },
+      });
+      if (!res.ok) return null;
+      const au = await res.json();
+      const email = au.email;
+      if (!email) return null;
+      const name = (au.user_metadata && (au.user_metadata.full_name || au.user_metadata.name)) || email.split('@')[0];
+
+      const existing = await select('users', `email=eq.${encodeURIComponent(email)}&select=*`);
+      let u;
+      if (existing.length) {
+        u = mapUser(existing[0]);
+      } else {
+        const id = 'usr_' + rid();
+        const token = rid();
+        secrets[id] = { hash: '', token };
+        const isFirst = (await select('users', 'select=id')).length === 0;
+        u = {
+          id, name, email,
+          nationalId: 'JRB-' + Math.floor(100000 + Math.random() * 900000),
+          balance: 5000, role: isFirst ? 'owner' : 'citizen', createdAt: Date.now(),
+          salaryClaimedAt: null, votedFor: null, lawVotes: {},
+        };
+        await upsert('users', [userRow(u)]);
+      }
+      const token = (existing.length && existing[0].token) || (secrets[u.id] && secrets[u.id].token) || rid();
+      secrets[u.id] = { hash: (existing.length && existing[0].password_hash) || '', token };
+      localStorage.setItem(TOKEN_KEY, token);
+      if (existing.length && existing[0].token !== token) await upsert('users', [userRow(u)]);
+
+      // strip OAuth tokens from the address bar
+      history.replaceState(null, '', location.pathname + location.search);
+      return u;
+    } catch (e) {
+      console.warn('[DB] Google callback failed', e);
+      return null;
+    }
+  }
+
+  return { enabled, init, reload, pushAll, register, login, logout, googleUrl, handleOAuthCallback };
 })();

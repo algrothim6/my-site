@@ -43,6 +43,7 @@ const ICONS = {
   palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/>',
   building: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h2"/><path d="M14 6h2"/><path d="M9 10h2"/><path d="M14 10h2"/><path d="M10 22v-5h4v5"/>',
   menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  google: '<path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.9 5.9 0 0 1-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 14a6 6 0 0 1 0-3.8V7.6H3.1a10 10 0 0 0 0 8.9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.6L6.4 10A5.9 5.9 0 0 1 12 6z"/>',
 };
 const icon = (name, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
@@ -636,6 +637,8 @@ function modalBody(type, d) {
   if (type === 'auth') {
     const reg = d.mode === 'register';
     return `<div class="tabs"><button class="tab ${reg?'active':''}" data-action="auth-switch" data-mode="register">حساب جديد</button><button class="tab ${!reg?'active':''}" data-action="auth-switch" data-mode="login">تسجيل الدخول</button></div>
+      ${window.DB && DB.enabled ? `<button class="btn btn-block" data-action="google-login" style="background:#fff;color:#1a1a1a;border-color:#dcdcdc;margin-bottom:14px;font-weight:800">${icon('google')} المتابعة بـ Google</button>
+      <div class="divider" style="margin:0 0 14px"></div>` : ''}
       <form data-form="auth" data-mode="${reg?'register':'login'}">
         ${reg ? `<div class="field"><label>الاسم الكامل</label><input name="name" required placeholder="اكتب اسمك"></div>` : ''}
         <div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" required placeholder="name@example.com" value="${esc(d.email||'')}"></div>
@@ -749,6 +752,10 @@ function addToWallet(amount, title, type) {
 
 function handleAction(el) {
   const a = el.dataset.action;
+  if (a === 'google-login') {
+    if (!window.DB || !DB.enabled) { toast('فعّل Supabase أولاً لاستخدام Google'); return; }
+    location.href = DB.googleUrl(); return;
+  }
   if (a === 'auth') { openModal('auth', { mode: el.dataset.mode || 'register', title: el.dataset.mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد' }); return; }
   if (a === 'auth-switch') { openModal('auth', { mode: el.dataset.mode, title: el.dataset.mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد' }); return; }
   if (a === 'close-modal') { closeModal(); return; }
@@ -973,12 +980,22 @@ window.addEventListener('hashchange', render);
 function boot() {
   render(); // show the UI instantly from defaults / cached state
   if (window.DB && DB.enabled) {
-    DB.init(S).then(ok => {
-      if (!ok) return;
-      try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {}
-      DB.pushAll(S); // keep seeded defaults and the signed-in user in sync
-      render();
-    }).catch(() => {});
+    (async () => {
+      const u = await DB.handleOAuthCallback(S);
+      if (u) {
+        S.user = u;
+        S.votedFor = u.votedFor || null;
+        S.lawVotes = u.lawVotes || {};
+        S.idIssued = !!u.nationalId;
+        toast('تم تسجيل الدخول بحساب Google');
+      }
+      const ok = await DB.init(S);
+      if (ok) {
+        try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {}
+        DB.pushAll(S); // keep seeded defaults and the signed-in user in sync
+        render();
+      }
+    })().catch(() => {});
   }
 }
 boot();
