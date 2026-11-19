@@ -11,6 +11,10 @@
     </g>
   </defs>
 
+  <!-- circular badge frame -->
+  <circle cx="200" cy="200" r="182" stroke="url(#g)" stroke-width="2.6" fill="none"/>
+  <circle cx="200" cy="200" r="172" stroke="url(#g)" stroke-width="1" fill="none" opacity=".55"/>
+
   <!-- laurel wreath -->
   <g>
     <path d="M200 366 C118 352 58 292 52 206 C48 150 68 108 102 78" stroke="url(#g)" stroke-width="2"/>
