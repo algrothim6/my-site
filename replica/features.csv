@@ -1,22 +1,24 @@
 feature,area,priority,original,clone,notes
-App shell + RTL sidebar nav,shell,must,yes,no,Desktop right sidebar + mobile header
-Home hero + service grid,home,must,yes,no,Greeting date + 12 service cards
-Live election countdown,home,must,yes,no,Thursday opening timer
-State symbols (flag/anthem),home,should,yes,no,Empty placeholders
-Constitution preview + full modal,home,should,yes,no,9 articles
-Theme switcher (3 palettes),global,should,yes,no,Persisted in localStorage
-Account create + login modal,auth,must,yes,no,Fictional local accounts
-National ID card issuance,wallet,should,yes,no,JRB-xxxxxx number
-Wallet balance + stats + tabs,wallet,must,yes,no,Four tabs
-Salary claim -> bank ledger,bank,must,yes,no,6000 JRD monthly
-Transfer to citizen modal,bank,should,yes,no,Updates ledgers
-Bank treasury dashboard,bank,must,yes,no,Reserve 1,000,000
-Election page + candidates + vote,elections,should,yes,no,Thursday-only rule
-Parliament members + law votes,parliament,should,yes,no,Open 24/7
-Court violations + cases,court,should,yes,no,Judge card
-Market businesses + 10% tax,market,should,yes,no,New business modal
-Park rooms + 3 games,park,should,yes,no,5-letter room code
-News + projects totals,news,should,yes,no,Official gazette
-Toast notifications,global,could,yes,no,Feedback on actions
-Whacka platform badge,chrome,skip,yes,skip,Third-party branding not part of app
-Real backend / cross-device sync,backend,skip,yes,skip,Simulated locally
+App shell + RTL sidebar nav,shell,must,yes,yes,Desktop right sidebar + mobile header
+Home hero + service grid,home,must,yes,yes,Hero and 12 service cards
+Live election countdown,home,must,yes,yes,Updates every second
+State symbols (flag/anthem),home,should,yes,yes,Editable by owner
+Constitution preview + full modal,home,should,yes,yes,9 articles
+Theme switcher (3 palettes),global,should,yes,yes,Persisted locally
+Account create + login modal,auth,must,yes,yes,Email/password + Google OAuth
+National ID card issuance,wallet,should,yes,yes,JRB-xxxxxx number
+Wallet balance + stats + tabs,wallet,must,yes,yes,Four tabs and statement
+Salary claim to bank ledger,bank,must,yes,yes,6000 JRD monthly
+Transfer to citizen modal,bank,should,yes,yes,Updates ledgers
+Bank treasury dashboard,bank,must,yes,yes,Reserve 1000000 plus ledgers
+Election page + candidates + vote,elections,should,yes,yes,Thursday-only rule and results
+Parliament members + law votes,parliament,should,yes,yes,Open 24/7
+Court violations + cases,court,should,yes,yes,Judge card and case log
+Market businesses + 10 percent tax,market,should,yes,yes,New business modal and sales
+Park rooms + 3 games,park,should,yes,yes,Room code and roles
+News + projects totals,news,should,yes,yes,Gazette and project launch
+Toast notifications,global,could,yes,yes,Feedback on actions
+Owner control panel,admin,could,no,yes,Added publishing tools
+Shared backend + cross-device sync,backend,should,yes,yes,Supabase Postgres + Google Auth
+Whacka platform badge,chrome,skip,yes,skip,Third-party hosting branding
+Real money / legal effect,backend,skip,yes,skip,Fictional demo by design
