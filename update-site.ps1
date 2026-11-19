@@ -12,7 +12,7 @@ $msg = Read-Host "اكتب وصف مختصر للتعديل (أو اضغط Enter
 if ([string]::IsNullOrWhiteSpace($msg)) { $msg = "Update " + (Get-Date -Format "yyyy-MM-dd HH:mm") }
 
 git commit -m $msg
-if ($LASTEXITCODE -ne 0) { Read-Host "مفيش تعديلات جديدة أو حصل خطأ. اضغط Enter"; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "مفيش تعديلات جديدة — هكتفي بالـ Push للموجود..." -ForegroundColor Yellow }
 
 Write-Host "جارٍ الرفع..." -ForegroundColor Cyan
 git push
