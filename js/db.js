@@ -76,7 +76,7 @@ window.DB = (function () {
   }
   const bankRow = b => ({ id: 'main', reserve: num(b.reserve), issued: num(b.issued), collected: num(b.collected), spent: num(b.spent), exchange_rate: num(b.exchangeRate || 3.75) });
   const bankFrom = r => r ? ({ reserve: num(r.reserve), issued: num(r.issued), collected: num(r.collected), spent: num(r.spent), exchangeRate: num(r.exchange_rate || 3.75) }) : null;
-  const settingsRow = S => ({ id: 'main', speaker: S.parliamentSpeaker || null, judge: S.judge || 'ادم وائل إسماعيل' });
+  const settingsRow = S => ({ id: 'main', speaker: S.parliamentSpeaker || null, judge: S.judge || 'ادم وائل إسماعيل', flag: S.flag || null, anthem: S.anthem || null });
   const candRow = c => ({ id: c.id, name: c.name, slogan: c.slogan, votes: num(c.votes) });
   const lawRow = l => ({ id: l.id, title: l.title, description: l.desc || l.description || '', yes: num(l.yes), no: num(l.no), status: l.status || 'open' });
   const lawFrom = r => ({ id: r.id, title: r.title, desc: r.description || '', yes: num(r.yes), no: num(r.no), status: r.status || 'open' });
@@ -89,8 +89,8 @@ window.DB = (function () {
   const bizFrom = r => ({ id: r.id, owner: r.owner_name, name: r.name, type: r.type, category: r.category, ownerId: r.owner_id });
   const saleRow = x => ({ id: x.id, title: x.title, amount: num(x.amount), tax: num(x.tax), date: x.date });
   const saleFrom = r => ({ id: r.id, title: r.title, amount: num(r.amount), tax: num(r.tax), date: r.date });
-  const roomRow = m => ({ id: m.id, name: m.name, game: m.game, code: m.code, host: m.host || (m.players ? m.players[0] : null), players: m.players || [] });
-  const roomFrom = r => ({ id: r.id, name: r.name, game: r.game, code: r.code, host: r.host, players: r.players || [] });
+  const roomRow = m => ({ id: m.id, name: m.name, game: m.game, code: m.code, host: m.host || (m.players ? m.players[0] : null), players: m.players || [], phase: m.phase || 'waiting', word: m.word || null, roles: m.roles || {} });
+  const roomFrom = r => ({ id: r.id, name: r.name, game: r.game, code: r.code, host: r.host, players: r.players || [], phase: r.phase || 'waiting', word: r.word || null, roles: r.roles || {} });
   const artRow = a => ({ id: a.id, title: a.title, source: a.source, body: a.body, date: a.date });
   const projRow = p => ({ id: p.id, name: p.name, value: num(p.value), status: p.status });
 
@@ -134,7 +134,12 @@ window.DB = (function () {
       select('rooms'), select('articles'), select('projects'), select('users'),
     ]);
     const b = bankFrom(bank[0]); if (b) S.bank = b;
-    if (settings[0]) { S.parliamentSpeaker = settings[0].speaker || null; S.judge = settings[0].judge || S.judge; }
+    if (settings[0]) {
+      S.parliamentSpeaker = settings[0].speaker || null;
+      S.judge = settings[0].judge || S.judge;
+      S.flag = settings[0].flag || null;
+      S.anthem = settings[0].anthem || null;
+    }
     if (candidates.length) S.candidates = candidates.map(c => ({ id: c.id, name: c.name, slogan: c.slogan, votes: num(c.votes) }));
     if (laws.length) S.laws = laws.map(lawFrom);
     S.articles = articles.map(a => ({ id: a.id, title: a.title, source: a.source, body: a.body, date: a.date }));
@@ -144,6 +149,7 @@ window.DB = (function () {
     S.businesses = businesses.map(bizFrom);
     S.sales = sales.map(saleFrom);
     S.rooms = rooms.map(roomFrom);
+    S.users = users.map(u => ({ id: u.id, name: u.name, email: u.email, balance: num(u.balance), role: u.role || 'citizen' }));
     if (S.user) {
       const fresh = users.find(u => u.id === S.user.id);
       if (fresh) S.user = mapUser(fresh);
@@ -183,9 +189,11 @@ window.DB = (function () {
     const hash = await hashPw(password, email);
     const token = rid();
     secrets[id] = { hash, token };
+    const existing = await select('users', 'select=id');
+    const role = existing.length === 0 ? 'owner' : 'citizen'; // first account owns the state
     const u = {
       id, name, email, nationalId: 'JRB-' + Math.floor(100000 + Math.random() * 900000),
-      balance: 5000, role: 'citizen', createdAt: Date.now(),
+      balance: 5000, role, createdAt: Date.now(),
       salaryClaimedAt: null, votedFor: null, lawVotes: {},
     };
     await upsert('users', [userRow(u)]);

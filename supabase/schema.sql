@@ -119,6 +119,13 @@ create table if not exists public.projects (
   status text
 );
 
+-- Extra columns for the expanded features (safe to re-run this whole file)
+alter table public.settings add column if not exists flag text;
+alter table public.settings add column if not exists anthem text;
+alter table public.rooms add column if not exists phase text default 'waiting';
+alter table public.rooms add column if not exists word text;
+alter table public.rooms add column if not exists roles jsonb default '{}'::jsonb;
+
 -- Public demo access: this is a fictional hobby app with no real money.
 -- Everyone (anon key) may read and write, exactly like the original's public demo.
 do $$

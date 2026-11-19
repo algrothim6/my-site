@@ -42,6 +42,7 @@ const ICONS = {
   send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
   palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="9" r="1"/><circle cx="12" cy="7" r="1"/><circle cx="16" cy="9" r="1"/>',
   building: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h2"/><path d="M14 6h2"/><path d="M9 10h2"/><path d="M14 10h2"/><path d="M10 22v-5h4v5"/>',
+  menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
 };
 const icon = (name, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
@@ -158,6 +159,9 @@ function defaultState() {
     projects: structuredClone(DEFAULT_PROJECTS),
     parliamentSpeaker: null,
     judge: 'ادم وائل إسماعيل',
+    flag: null,
+    anthem: null,
+    users: [],
   };
 }
 
@@ -178,6 +182,7 @@ function resetState() { S = defaultState(); save(); render(); }
 
 /* ---------- auth helpers ---------- */
 const isLogged = () => !!S.user;
+const isOwner = () => isLogged() && S.user.role === 'owner';
 function requireAuth(action) {
   if (isLogged()) return true;
   toast('سجّل الدخول أو أنشئ حساباً أولاً');
@@ -211,9 +216,10 @@ function navigate(route) {
 /* ---------- shell rendering ---------- */
 function renderShell() {
   const route = currentRoute();
+  const navItems = NAV.concat(isOwner() ? [['#/owner', 'لوحة المالك', 'shield']] : []);
   const brand = `<div class="brand">${emblem()}<div><div class="brand-title">الدولة الجروبية</div><div class="brand-sub">دولة افتراضية</div></div></div>`;
   $('#sidebar').innerHTML = brand + `<div class="hairline"></div>
-    <nav class="side-nav">${NAV.map(([h, t, i]) => `<a href="${h}" class="nav-item ${route === h.slice(1) ? 'active' : ''}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
+    <nav class="side-nav">${navItems.map(([h, t, i]) => `<a href="${h}" class="nav-item ${route === h.slice(1) ? 'active' : ''}">${icon(i)}<span>${t}</span></a>`).join('')}</nav>
     <div class="side-user" data-action="account">
       <div class="avatar">${isLogged() ? esc(S.user.name[0]) : 'م'}</div>
       <div><div class="u-name">${isLogged() ? esc(S.user.name) : 'زائر'}</div><div class="u-bal gold">${num(isLogged() ? S.user.balance : 5000)} ج.ج</div></div>
@@ -223,7 +229,8 @@ function renderShell() {
   $('#topbar').innerHTML = `<div class="brand">${emblem()}<div><div class="brand-title">الدولة الجروبية</div><div class="brand-sub">دولة افتراضية للتسلية</div></div></div>
     <button class="btn btn-sm" data-action="account">${icon(isLogged() ? 'user' : 'plus')} ${isLogged() ? esc(S.user.name) : 'حسابي'}</button>`;
 
-  $('#bottomNav').innerHTML = BOTTOM_NAV.map(([h, t, i]) => `<a href="${h}" class="${route === h.slice(1) ? 'active' : ''}">${icon(i)}<span>${t.split(' ')[0]}</span></a>`).join('');
+  $('#bottomNav').innerHTML = BOTTOM_NAV.map(([h, t, i]) => `<a href="${h}" class="${route === h.slice(1) ? 'active' : ''}">${icon(i)}<span>${t.split(' ')[0]}</span></a>`).join('')
+    + `<button type="button" data-action="more-menu" class="${route === '/owner' || route === '/constitution' ? 'active' : ''}">${icon('menu')}<span>المزيد</span></button>`;
   document.documentElement.dataset.theme = S.theme;
 }
 
@@ -260,8 +267,8 @@ function renderHome() {
   <div class="face">
     <h2 class="section-title">رمز الدولة</h2><p class="section-sub">الهوية البصرية للدولة الجروبية</p>
     <div class="grid grid-2">
-      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">علم الدولة</div><div class="row-sub muted small">خانة فارغة — لم يُرفع العلم بعد</div></div><div style="width:52px;height:36px;border:1px dashed var(--line-strong);border-radius:6px;background:linear-gradient(135deg,rgba(var(--primary),.12),transparent)"></div></div></div>
-      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">النشيد الوطني</div><div class="row-sub muted small">خانة فارغة — لم تُعتمد النشيد بعد</div></div>${icon('music')}</div></div>
+      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">علم الدولة</div><div class="row-sub muted small">${S.flag ? 'الرمز المعتمد للدولة' : 'خانة فارغة — لم يُرفع العلم بعد'}</div></div><div style="width:52px;height:36px;border:1px solid var(--line-strong);border-radius:6px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,rgba(var(--primary),.12),transparent)">${S.flag ? esc(S.flag) : ''}</div></div></div>
+      <div class="card"><div class="row" style="border:0"><div class="row-main"><div class="row-title">النشيد الوطني</div><div class="row-sub muted small" style="white-space:pre-line">${S.anthem ? esc(S.anthem) : 'خانة فارغة — لم تُعتمد النشيد بعد'}</div></div>${icon('music')}</div></div>
     </div>
   </div>
 
@@ -439,9 +446,13 @@ function renderElections() {
     <div class="stat"><div class="k">حالتي</div><div class="v" style="font-size:18px">${S.votedFor ? 'صوّت ✓' : (open ? 'جاهز' : 'مغلق')}</div></div>
     <div class="stat"><div class="k">يوم الاقتراع</div><div class="v" style="font-size:16px">الخميس</div><div class="u">كل أسبوع</div></div>
   </div>
-  <div class="card" style="margin-top:16px"><h3 class="section-title">قائمة المرشحين</h3>
-    ${S.candidates.map(c => `<div class="row"><div class="row-main"><div class="row-title">${esc(c.name)}</div><div class="row-sub">${esc(c.slogan)}</div></div>
-      <div style="display:flex;align-items:center;gap:14px"><span class="gold small">${num(c.votes)} صوت</span><button class="btn btn-gold btn-sm" data-action="vote" data-id="${c.id}" ${!open || S.votedFor ? 'disabled' : ''}>${S.votedFor === c.id ? 'صوّت ✓' : 'انتخاب'}</button></div></div>`).join('')}
+  <div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3 class="section-title">قائمة المرشحين</h3><button class="btn btn-sm" data-action="nominate">${icon('plus')} الترشح للرئاسة</button></div>
+    ${(() => { const total = S.candidates.reduce((a, c) => a + c.votes, 0) || 1;
+      return S.candidates.map(c => `<div style="padding:14px 0;border-bottom:1px solid var(--line)">
+        <div class="row" style="padding:0;border:0"><div class="row-main"><div class="row-title">${esc(c.name)}</div><div class="row-sub">${esc(c.slogan)}</div></div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="gold small">${num(c.votes)} صوت</span><button class="btn btn-gold btn-sm" data-action="vote" data-id="${c.id}" ${!open || S.votedFor ? 'disabled' : ''}>${S.votedFor === c.id ? 'صوّت ✓' : 'انتخاب'}</button></div></div>
+        <div style="height:5px;border-radius:99px;background:rgba(255,255,255,.06);margin-top:10px;overflow:hidden"><div style="height:100%;width:${Math.round(c.votes / total * 100)}%;background:linear-gradient(90deg,var(--gold-c),var(--gold-a));border-radius:99px"></div></div>
+      </div>`).join(''); })()}
   </div>
   <p class="small muted center" style="margin-top:18px">وفق الدستور الجروبي لا يُفتح صندوق الاقتراع إلا يوم الخميس. عدّاد الافتتاح أعلاه يعمل باستمرار حتى ذلك اليوم.</p>`;
 }
@@ -522,10 +533,10 @@ function renderPark() {
   ];
   return pageHead('ترفيه المواطنين', 'جروبيا بارك',
     'غرف لعب جماعية — كل واحد يفتح الغرفة من هاتفه، والمنشئ يوزّع الأدوار ويبدأ.', '') +
-  `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px"><span class="pill">منتزه الدولة الرقمي</span><button class="btn btn-gold btn-sm" data-action="new-room">${icon('plus')} غرفة جديدة</button></div>
+  `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap"><span class="pill">منتزه الدولة الرقمي</span><div style="display:flex;gap:8px"><button class="btn btn-sm" data-action="join-code">${icon('key')} دخول بكود</button><button class="btn btn-gold btn-sm" data-action="new-room">${icon('plus')} غرفة جديدة</button></div></div>
   <div class="card"><p class="small muted" style="line-height:1.9;margin:0 0 14px">كل غرفة مقفولة بكود من خمسة حروف — المنشئ وحده يرى كودها ويشاركه مع من يريد. رسوم إنشاء الغرفة 500 دولار جروبي — مالك الدولة معفى.</p>
     <h3 class="section-title">الغرف المفتوحة</h3>
-    ${S.rooms.length ? S.rooms.map(r => `<div class="row"><div class="row-main"><div class="row-title">${esc(r.name)}</div><div class="row-sub">${esc(r.game)} · ${r.players.length} لاعبين · الكود: <span class="gold">${esc(r.code)}</span></div></div><button class="btn btn-gold btn-sm" data-action="join-room" data-id="${r.id}">دخول</button></div>`).join('')
+    ${S.rooms.length ? S.rooms.map(r => `<div class="row"><div class="row-main"><div class="row-title">${esc(r.name)} ${r.phase==='playing'?'<span class="pill">جارٍ اللعب</span>':''}</div><div class="row-sub">${esc(r.game)} · ${r.players.length} لاعبين · الكود: <span class="gold">${esc(r.code)}</span></div></div><button class="btn btn-gold btn-sm" data-action="room-detail" data-id="${r.id}">دخول</button></div>`).join('')
     : '<div class="empty">لا توجد غرف بعد — أنشئ أول غرفة وادعُ أصحابك بالكود.</div>'}
   </div>
   <div class="face"><h2 class="section-title">الألعاب</h2><div class="grid grid-3">
@@ -549,6 +560,41 @@ function renderNews() {
   <p class="small muted center" style="margin-top:18px">كل ما يُنشر هنا افتراضي وللتسلية فقط، ولا يمثل أي جهة إعلامية حقيقية.</p>`;
 }
 
+function renderOwner() {
+  if (!isOwner()) return pageHead('ديوان الدولة', 'لوحة المالك', 'هذه الصفحة لمالك الدولة فقط.', '') + '<div class="empty">ليست لديك صلاحية دخول هذه الصفحة.</div>';
+  const acts = [
+    ['news','نشر خبر','انشر بياناً في الجريدة الرسمية'],
+    ['law','عرض قانون جديد','أضف قانوناً للتصويت في المجلس'],
+    ['candidate','إضافة مرشح','أضف مرشحاً لانتخابات الرئاسة'],
+    ['fine','إصدار مخالفة','فرض غرامة على أحد المواطنين'],
+    ['case','تسجيل قضية','سجّل قضية أمام المحكمة'],
+    ['symbols','رموز الدولة','ارفع العلم واعتمد النشيد'],
+    ['judge','تعيين قاضي','غيّر قاضي المحكمة'],
+    ['speaker','رئيس المجلس','اختر رئيس مجلس الشعب'],
+  ];
+  return pageHead('ديوان الدولة', 'لوحة المالك',
+    'مركز تحكم الدولة — من هنا تُدار الأخبار والقوانين والقضاء والرموز.',
+    `أنت مالك الدولة، ${esc(S.user.name)}. كل ما تنشره يظهر فوراً لكل المواطنين.`) +
+  `<div class="grid grid-4">
+    <div class="stat"><div class="k">المواطنون</div><div class="v">${S.users.length}</div></div>
+    <div class="stat"><div class="k">الأخبار</div><div class="v">${S.articles.length}</div></div>
+    <div class="stat"><div class="k">القوانين</div><div class="v">${S.laws.length}</div></div>
+    <div class="stat"><div class="k">القضايا</div><div class="v">${S.cases.length}</div></div>
+  </div>
+  <div class="face"><h2 class="section-title">إدارة الدولة</h2><p class="section-sub">اختر ما تريد تنفيذه</p>
+    <div class="grid grid-4">${acts.map(([k,t,d]) => `<button class="service-card" data-action="owner" data-kind="${k}" style="text-align:right"><div class="service-ico">${icon(k==='news'?'news':k==='law'?'doc':k==='candidate'?'vote':k==='fine'?'coins':k==='case'?'gavel':k==='symbols'?'flag':k==='judge'?'scale':'users')}</div><div class="service-name">${t}</div><div class="service-desc">${d}</div></button>`).join('')}</div>
+  </div>
+  <div class="face grid grid-2">
+    <div class="card"><h3 class="section-title">المواطنون المسجلون</h3>
+      ${S.users.length ? S.users.map(u => `<div class="row"><div class="row-main"><div class="row-title">${esc(u.name)} ${u.role==='owner'?'<span class="pill">المالك</span>':''}</div><div class="row-sub">${esc(u.email)}</div></div><span class="gold small">${num(u.balance)} ج.ج</span></div>`).join('')
+      : '<div class="empty">لا يوجد مواطنون بعد.</div>'}
+    </div>
+    <div class="card"><h3 class="section-title">آخر ما نُشر</h3>
+      ${S.articles.slice(0,4).map(a => `<div class="row"><div class="row-main"><div class="row-title">${esc(a.title)}</div><div class="row-sub">${esc(a.source)} · ${esc(a.date)}</div></div></div>`).join('') || '<div class="empty">لا توجد أخبار.</div>'}
+    </div>
+  </div>`;
+}
+
 function renderConstitution() {
   return pageHead('الوثيقة التأسيسية', 'دستور الدولة', 'بسم الله الرحمن الرحيم — وثيقة رمزية لدولة افتراضية أُنشئت للتسلية.', '') +
     `<div class="card constitution"><h2 class="section-title">دستور الدولة الجروبية</h2>
@@ -563,7 +609,7 @@ function render() {
   const pages = {
     '/': renderHome, '/wallet': renderWallet, '/bank': renderBank, '/elections': renderElections,
     '/parliament': renderParliament, '/court': renderCourt, '/market': renderMarket,
-    '/park': renderPark, '/news': renderNews, '/constitution': renderConstitution,
+    '/park': renderPark, '/news': renderNews, '/constitution': renderConstitution, '/owner': renderOwner,
   };
   renderShell();
   $('#main').innerHTML = (pages[r] || renderHome)();
@@ -648,6 +694,43 @@ function modalBody(type, d) {
   if (type === 'choose-speaker') {
     return `<form data-form="speaker"><div class="field"><label>اسم رئيس المجلس</label><input name="name" required placeholder="اسم المواطن"></div><button class="btn btn-gold btn-block" type="submit">تعيين</button></form>`;
   }
+  if (type.startsWith('owner-')) {
+    const people = () => S.users.map(u => `<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+    switch (type) {
+      case 'owner-news': return `<form data-form="owner-news"><div class="field"><label>عنوان الخبر</label><input name="title" required placeholder="بيان رسمي"></div><div class="field"><label>المصدر</label><input name="source" required value="ديوان الدولة"></div><div class="field"><label>النص</label><textarea name="body" rows="5" required></textarea></div><button class="btn btn-gold btn-block" type="submit">نشر الخبر</button></form>`;
+      case 'owner-law': return `<form data-form="owner-law"><div class="field"><label>عنوان القانون</label><input name="title" required></div><div class="field"><label>الوصف</label><textarea name="description" rows="3" required></textarea></div><button class="btn btn-gold btn-block" type="submit">عرض القانون للتصويت</button></form>`;
+      case 'owner-candidate': return `<form data-form="owner-candidate"><div class="field"><label>اسم المرشح</label><input name="name" required></div><div class="field"><label>الشعار</label><input name="slogan" required></div><button class="btn btn-gold btn-block" type="submit">إضافة المرشح</button></form>`;
+      case 'owner-fine': return `<form data-form="owner-fine"><div class="field"><label>المواطن</label><select name="who" required>${people()}</select></div><div class="field"><label>سبب المخالفة</label><input name="title" required></div><div class="field"><label>القيمة (دولار جروبي)</label><input name="amount" type="number" min="1" required></div><button class="btn btn-gold btn-block" type="submit">إصدار المخالفة</button></form>`;
+      case 'owner-case': return `<form data-form="owner-case"><div class="field"><label>المدعى عليه</label><select name="defendant" required>${people()}</select></div><div class="field"><label>عنوان القضية</label><input name="title" required></div><div class="field"><label>الحالة</label><select name="status"><option>قيد النظر</option><option>محكوم</option><option>مغلقة</option></select></div><button class="btn btn-gold btn-block" type="submit">تسجيل القضية</button></form>`;
+      case 'owner-symbols': return `<form data-form="owner-symbols"><div class="field"><label>رمز العلم (إيموجي)</label><input name="flag" placeholder="🦅" maxlength="4" value="${esc(S.flag||'')}"></div><div class="field"><label>النشيد الوطني</label><textarea name="anthem" rows="3" placeholder="نشيد الدولة الجروبية...">${esc(S.anthem||'')}</textarea></div><button class="btn btn-gold btn-block" type="submit">اعتماد الرموز</button></form>`;
+      case 'owner-judge': return `<form data-form="owner-judge"><div class="field"><label>اسم قاضي المحكمة</label><input name="name" required value="${esc(S.judge)}"></div><button class="btn btn-gold btn-block" type="submit">تعيين</button></form>`;
+    }
+  }
+  if (type === 'room') {
+    const r = d.room;
+    const me = S.user?.name;
+    const role = r.roles && me ? r.roles[me] : null;
+    return `<div class="center"><span class="pill">${esc(r.game)}</span><h3 style="font-family:var(--font-display);color:rgb(var(--primary));font-size:22px;margin:12px 0 4px">${esc(r.name)}</h3>
+      <div class="small muted">كود الغرفة: <span class="gold" style="letter-spacing:.2em">${esc(r.code)}</span></div></div>
+      <div class="divider"></div>
+      <div class="row-title small">اللاعبون (${r.players.length})</div>
+      ${r.players.map(p => `<div class="row"><div class="row-main"><div class="row-title small">${esc(p)} ${r.host===p?'<span class="tag">المنشئ</span>':''}</div></div>${r.roles && r.roles[p] ? `<span class="pill">${esc(r.roles[p])}</span>` : ''}</div>`).join('')}
+      ${r.phase === 'playing' ? `<div class="card" style="margin-top:16px;text-align:center">
+        <div class="small muted">الكلمة السرية</div>
+        <div style="font-family:var(--font-display);font-size:30px;color:rgb(var(--primary));margin:8px 0">${esc(r.word || '—')}</div>
+        ${role ? `<div class="pill">دورك: ${esc(role)}</div>` : '<div class="small muted">انضم للغرفة لتظهر أدوارك</div>'}
+        </div>` : `<button class="btn btn-gold btn-block" style="margin-top:16px" data-action="start-game" data-id="${r.id}">${icon('game')} بدء اللعبة وتوزيع الأدوار</button>`}`;
+  }
+  if (type === 'more-menu') {
+    const items = NAV.concat(isOwner() ? [['#/owner','لوحة المالك','shield']] : []).concat([['#/constitution','دستور الدولة','scale']]);
+    return `<div class="grid grid-2">${items.map(([h,t,i]) => `<a class="service-card" href="${h}" style="min-height:auto"><div class="service-ico" style="width:32px;height:32px;flex:0 0 32px">${icon(i)}</div><div class="service-name small">${t}</div></a>`).join('')}</div>`;
+  }
+  if (type === 'nominate') {
+    return `<form data-form="nominate"><div class="field"><label>الاسم في قائمة المرشحين</label><input name="name" required value="${esc(S.user?.name||'')}"></div><div class="field"><label>الشعار الانتخابي</label><input name="slogan" required placeholder="شعارك للرئاسة"></div><button class="btn btn-gold btn-block" type="submit">تقديم الترشح</button></form>`;
+  }
+  if (type === 'join-code') {
+    return `<form data-form="join-code"><div class="field"><label>كود الغرفة (5 حروف)</label><input name="code" maxlength="5" required style="text-align:center;letter-spacing:.3em;text-transform:uppercase" placeholder="ABCDE"></div><button class="btn btn-gold btn-block" type="submit">${icon('arrow')} دخول الغرفة</button></form>`;
+  }
   if (type === 'join-room') {
     return `<div class="center"><div style="font-size:44px;letter-spacing:.3em;color:rgb(var(--primary));font-family:var(--font-display)">${esc(d.code)}</div><p class="small muted">كود الغرفة — شاركه مع أصدقائك للدخول</p><button class="btn btn-gold" data-action="close-modal">حسناً</button></div>`;
   }
@@ -731,6 +814,30 @@ function handleAction(el) {
     S.articles.unshift({ id: uid(), title: `إطلاق مشروع: ${p.name}`, source: 'ديوان الدولة', date: shortDate(), body: `تم اعتماد وإطلاق مشروع ${p.name} بقيمة ${num(p.value)} دولار جروبي، وقد أُضيفت قيمته إلى خزينة الدولة.` });
     save(); render(); toast('تم إطلاق المشروع وإضافة قيمته للخزينة'); return;
   }
+  if (a === 'owner') {
+    if (!isOwner()) { toast('هذه الصفحة لمالك الدولة فقط'); return; }
+    const titles = { news:'نشر خبر جديد', law:'عرض قانون جديد', candidate:'إضافة مرشح', fine:'إصدار مخالفة', case:'تسجيل قضية', symbols:'رموز الدولة', judge:'تعيين قاضي المحكمة', speaker:'اختيار رئيس المجلس' };
+    if (el.dataset.kind === 'speaker') { openModal('choose-speaker', { title: titles.speaker }); return; }
+    openModal('owner-' + el.dataset.kind, { title: titles[el.dataset.kind] || 'إدارة الدولة' }); return;
+  }
+  if (a === 'more-menu') { openModal('more-menu', { title: 'كل أقسام الدولة' }); return; }
+  if (a === 'nominate') { if (requireAuth('الترشح')) openModal('nominate', { title: 'الترشح لرئاسة الجمهورية' }); return; }
+  if (a === 'room-detail') { const r = S.rooms.find(x => x.id === el.dataset.id); openModal('room', { title: r.name, room: r }); return; }
+  if (a === 'join-code') { openModal('join-code', { title: 'الدخول إلى غرفة' }); return; }
+  if (a === 'start-game') {
+    const r = S.rooms.find(x => x.id === el.dataset.id);
+    if (r.host !== S.user?.name && S.user?.role !== 'owner') { toast('المنشئ فقط يبدأ اللعبة'); return; }
+    const probes = [' تفاحة','جاسوس','مفتاح','قمر','كتاب','سيارة','مدرسة','قطة','ذهب','مطر'];
+    const spies = ['الجاسوس','الجاسوس','المحقق','المواطن','المواطن'];
+    const roles = {};
+    r.players.forEach((p, i) => { roles[p] = spies[i % spies.length]; });
+    r.roles = roles;
+    r.word = probes[Math.floor(Math.random() * probes.length)].trim();
+    r.phase = 'playing';
+    save(); render();
+    openModal('room', { title: r.name, room: r });
+    toast('بدأت اللعبة — تم توزيع الأدوار'); return;
+  }
   if (a === 'logout') { if (window.DB && DB.enabled) DB.logout(); S.user = null; S.idIssued = false; S.votedFor = null; S.lawVotes = {}; save(); closeModal(); render(); toast('تم تسجيل الخروج'); return; }
 }
 
@@ -751,10 +858,10 @@ function handleSubmit(form) {
           }
         } else {
           if (form.dataset.mode === 'register') {
-            S.user = { name: data.name.trim(), email: data.email.trim(), balance: 5000, nationalId: newNationalId(), createdAt: Date.now(), salaryClaimedAt: null };
+            S.user = { name: data.name.trim(), email: data.email.trim(), balance: 5000, nationalId: newNationalId(), createdAt: Date.now(), salaryClaimedAt: null, role: 'owner' };
             S.idIssued = false;
           } else {
-            S.user = { name: data.email.split('@')[0] || 'مواطن', email: data.email.trim(), balance: 5000, nationalId: newNationalId(), createdAt: Date.now(), salaryClaimedAt: null };
+            S.user = { name: data.email.split('@')[0] || 'مواطن', email: data.email.trim(), balance: 5000, nationalId: newNationalId(), createdAt: Date.now(), salaryClaimedAt: null, role: 'owner' };
           }
         }
         S.votedFor = S.user.votedFor || null;
@@ -786,6 +893,50 @@ function handleSubmit(form) {
     save(); closeModal(); render(); toast('تم إنشاء الغرفة'); return;
   }
   if (f === 'speaker') { S.parliamentSpeaker = data.name.trim(); save(); closeModal(); render(); toast('تم تعيين رئيس المجلس'); return; }
+  if (f === 'owner-news') {
+    S.articles.unshift({ id: uid(), title: data.title.trim(), source: data.source.trim(), body: data.body.trim(), date: shortDate() });
+    save(); closeModal(); render(); toast('تم نشر الخبر في الجريدة الرسمية'); return;
+  }
+  if (f === 'owner-law') {
+    S.laws.push({ id: uid(), title: data.title.trim(), desc: data.description.trim(), yes: 0, no: 0, status: 'open' });
+    save(); closeModal(); render(); toast('تم عرض القانون للتصويت'); return;
+  }
+  if (f === 'owner-candidate') {
+    S.candidates.push({ id: uid(), name: data.name.trim(), slogan: data.slogan.trim(), votes: 0 });
+    save(); closeModal(); render(); toast('تم إضافة المرشح'); return;
+  }
+  if (f === 'owner-fine') {
+    const who = data.who.trim();
+    const amount = Number(data.amount);
+    const v = { id: uid(), title: `${data.title.trim()} — ${who}`, amount, paid: false, date: shortDate(), who };
+    S.violations.push(v);
+    S.bank.collected += amount;
+    save(); closeModal(); render(); toast('تم إصدار المخالفة'); return;
+  }
+  if (f === 'owner-case') {
+    S.cases.push({ id: uid(), title: data.title.trim(), defendant: data.defendant.trim(), status: data.status, date: shortDate() });
+    save(); closeModal(); render(); toast('تم تسجيل القضية'); return;
+  }
+  if (f === 'owner-symbols') {
+    S.flag = data.flag.trim() || null; S.anthem = data.anthem.trim() || null;
+    save(); closeModal(); render(); toast('تم اعتماد رموز الدولة'); return;
+  }
+  if (f === 'owner-judge') {
+    S.judge = data.name.trim(); save(); closeModal(); render(); toast('تم تعيين قاضي المحكمة'); return;
+  }
+  if (f === 'nominate') {
+    if (S.candidates.some(c => c.name === data.name.trim())) { toast('هذا الاسم مرشح بالفعل'); return; }
+    S.candidates.push({ id: uid(), name: data.name.trim(), slogan: data.slogan.trim(), votes: 0 });
+    save(); closeModal(); render(); toast('تم قبول ترشحك'); return;
+  }
+  if (f === 'join-code') {
+    const code = data.code.trim().toUpperCase();
+    const r = S.rooms.find(x => x.code === code);
+    if (!r) { toast('لا توجد غرفة بهذا الكود'); return; }
+    if (S.user && !r.players.includes(S.user.name)) { r.players.push(S.user.name); save(); }
+    closeModal(); render(); openModal('room', { title: r.name, room: r });
+    toast('تم الدخول إلى الغرفة'); return;
+  }
 }
 
 /* ---------- global events ---------- */
